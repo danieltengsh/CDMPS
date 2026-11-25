@@ -1,0 +1,15 @@
+model {
+  # 直接估计 s，不通过特征
+  for (j in 1:J) {
+    s[j] ~ dbeta(2, 2)  # Beta先验，均值0.5
+  }
+  
+  # 简化：假设所有学生都掌握所有属性
+  for (i in 1:N) {
+    for (j in 1:J) {
+      # 假设 mastered = 1（都掌握）
+      prob[i, j] <- 1 - s[j]
+      X_obs[i, j] ~ dbern(prob[i, j])
+    }
+  }
+}

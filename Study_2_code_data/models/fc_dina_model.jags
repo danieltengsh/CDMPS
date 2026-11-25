@@ -1,0 +1,61 @@
+model {
+  #--- 先验分布 ---
+  # 截距参数
+  c0 ~ dnorm(0, 0.25)
+  
+  # 特征权重系数
+  for (f in 1:F) {
+    phi[f] ~ dnorm(0, 10)
+  }
+  
+  # 残差精度
+  tau_epsilon ~ dgamma(0.1, 0.1)
+  sigma_epsilon <- 1/sqrt(tau_epsilon)
+  
+  # 残差项
+  for (j in 1:J) {
+    epsilon[j] ~ dnorm(0, tau_epsilon)
+  }
+  
+  # 模板难度参数
+  for (k in 1:K) {
+    beta_k[k] ~ dnorm(beta_k_true[k], 1) 
+  }
+  
+  # 学生能力参数
+  for (i in 1:N) {
+    theta[i] ~ dunif(-4, 4)
+  }
+  
+  # 学生属性掌握概率
+  for (i in 1:N) {
+    for (k in 1:K) {
+      logit(p_alpha[i, k]) <- theta[i] - beta_k[k]
+      alpha[i, k] ~ dbern(p_alpha[i, k])
+    }
+  }
+  
+  #--- FC-DINA核心：通过特征预测失误参数 ---
+  for (j in 1:J) {
+    logit_s[j] <- 1.7 * (c0 + inprod(phi[], C[j,]) + epsilon[j])
+    s[j] <- ilogit(logit_s[j])
+  }
+  
+  #--- DINA模型响应部分（处理缺失值）---
+  for (i in 1:N) {
+    for (j in 1:J) {
+      # 判断是否掌握所有需要的属性
+      mastered[i, j] <- step(inprod(alpha[i,], Q[j,]) - sum(Q[j,]) + 0.5)
+      
+      # 响应概率
+      prob[i, j] <- (1 - s[j]) * mastered[i, j] + g_fixed[j] * (1 - mastered[i, j])
+      
+      # 只有观测到数据时才建模
+      # 用缺失指示器控制：如果X_miss[i,j]为FALSE（即有观测值），则建模
+      X_obs[i, j] ~ dbern(prob[i, j])
+    }
+  }
+  
+  # 监控参数
+  avg_s <- mean(s[])
+}

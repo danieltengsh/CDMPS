@@ -1,0 +1,13 @@
+model {
+  for (j in 1:J) {
+    s[j] ~ dbeta(2, 2)
+  }
+  
+  # 固定 alpha = 1（都掌握）
+  for (i in 1:N) {
+    for (j in 1:J) {
+      prob[i, j] <- 1 - s[j]  # mastered = 1
+      X_obs[i, j] ~ dbern(prob[i, j])
+    }
+  }
+}

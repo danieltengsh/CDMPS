@@ -1,0 +1,33 @@
+model {
+  # 模板难度参数
+  for (k in 1:K) {
+    beta_k[k] ~ dnorm(0, 1)
+  }
+  
+  # 学生能力参数
+  for (i in 1:N) {
+    theta[i] ~ dunif(-4, 4)
+  }
+  
+  # 学生属性掌握概率
+  for (i in 1:N) {
+    for (k in 1:K) {
+      logit(p_alpha[i, k]) <- theta[i] - beta_k[k]
+      alpha[i, k] ~ dbern(p_alpha[i, k])
+    }
+  }
+  
+  # 直接估计 s，不通过特征
+  for (j in 1:J) {
+    s[j] ~ dbeta(2, 2)
+  }
+  
+  # DINA模型响应部分
+  for (i in 1:N) {
+    for (j in 1:J) {
+      mastered[i, j] <- step(inprod(alpha[i,], Q[j,]) - sum(Q[j,]) + 0.5)
+      prob[i, j] <- (1 - s[j]) * mastered[i, j] + g_fixed[j] * (1 - mastered[i, j])
+      X_obs[i, j] ~ dbern(prob[i, j])
+    }
+  }
+}
